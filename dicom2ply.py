@@ -23,7 +23,7 @@
 import os
 import sys
 
-import dicom
+import pydicom as dicom
 import numpy
 import pylab
 
@@ -34,7 +34,7 @@ class Contour(object):
     def __init__(self, contour, dicom_dir='', bins=2**12):
         self.dicom_dir = dicom_dir
         self.bins = bins
-        self.slice_ref = contour.ContourImages[0].RefdSOPInstanceUID
+        self.slice_ref = contour.ContourImageSequence[0].ReferencedSOPInstanceUID
                 
         self.y = contour.ContourData[0::3]
         self.x = contour.ContourData[1::3]
@@ -102,7 +102,7 @@ class RegionOfInterest(object):
                 
         self.contours = []
         self.vertex_count = 0
-        for contour in roi.Contours:
+        for contour in roi.ContourSequence:
             c = Contour(contour, dicom_dir=self.dicom_dir)
             if c.mean is None:
                 continue
@@ -168,18 +168,18 @@ class Patient(object):
         self.debug = debug
         self.dicom_dir = dicom_dir
         
-        self.files = os.walk(self.dicom_dir).next()[2]
+        self.files = next(os.walk(self.dicom_dir))[2]
             
         for f in self.files:
             if f[:2] == 'RS':
                 dicom_structure = f
-                print f
+                print(f)
                 break
                 
         self.structure = dicom.read_file("%s/%s" % (dicom_dir, dicom_structure))
         
         self.region_names = {}
-        for i, roi in enumerate(self.structure.RTROIObservations):
+        for i, roi in enumerate(self.structure.RTROIObservationsSequence):
             try:
                 name = roi.ROIObservationLabel
             except AttributeError:
@@ -188,7 +188,7 @@ class Patient(object):
             self.region_names[number] = name
         
         self.regions = {}
-        for roi in self.structure.ROIContours:
+        for roi in self.structure.ROIContourSequence:
             number = roi.ReferencedROINumber
             try:
                 name = self.region_names[number]
@@ -197,7 +197,7 @@ class Patient(object):
                 continue
             
             try:
-                roi.Contours
+                roi.ContourSequence
             except AttributeError:
                 # Not an ROI with geometry
                 continue
@@ -211,7 +211,7 @@ class Patient(object):
             names = self.regions.keys()
           
         for n in names:
-            print n   
+            print(n)   
             roi = self.regions[n]
             
             ply_verts = []
@@ -235,10 +235,10 @@ class Patient(object):
                     'property float z',
                     'end_header']
             except AttributeError:
-                print " - fail"
+                print(" - fail")
                 continue           
             file_name = "%s/roi_%s.ply" % (directory, roi.name)
-            print file_name
+            print(file_name)
             ply_file = file(file_name, 'w')
             for line in ply_header:
                 ply_file.write("%s\n" % line)
@@ -252,6 +252,8 @@ class Patient(object):
     
     
 if __name__ == "__main__":
-    patient = Patient(sys.argv[1])
-    patient.dump_ply(directory=sys.argv[2])
+    # patient = Patient(sys.argv[1])
+    # patient.dump_ply(directory=sys.argv[2])
 
+    patient = Patient(r'C:\Users\Sun Yu\OneDrive - Peter Mac\Desktop\Meshes\ct-dcm')
+    patient.dump_ply(r'C:\Users\Sun Yu\OneDrive - Peter Mac\Desktop\Meshes')
